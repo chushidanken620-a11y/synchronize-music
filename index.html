@@ -3,31 +3,34 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Synchronize Music</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#080b18;color:#fff;font-family:Arial,sans-serif}
-header{padding:20px 6%;display:flex;justify-content:space-between;
-align-items:center;border-bottom:1px solid #242944}
-.logo{font-size:23px;font-weight:bold;color:#b38cff}
-main{max-width:900px;margin:45px auto;padding:20px}
+header{padding:20px;display:flex;justify-content:space-between;
+border-bottom:1px solid #29304b}
+.logo{font-size:22px;font-weight:bold;color:#b38cff}
+main{max-width:750px;margin:auto;padding:20px}
 .hero{text-align:center;padding:30px 0}
-h1{font-size:clamp(36px,8vw,60px);margin:10px 0}
+h1{font-size:clamp(36px,8vw,55px);margin:12px 0}
 p{color:#b8c1df;line-height:1.6}
-button,.upload{border:0;border-radius:25px;padding:12px 18px;
-background:linear-gradient(100deg,#a13cff,#398bff);color:white;
-font-weight:bold;cursor:pointer;display:inline-block}
 .panel{background:#11172b;border:1px solid #293253;
-padding:22px;border-radius:18px;margin:20px 0}
-input[type=search]{width:100%;padding:14px;border-radius:12px;
-border:1px solid #394364;background:#090e20;color:white;margin:12px 0}
-.track{display:flex;justify-content:space-between;align-items:center;
-gap:12px;padding:14px 0;border-bottom:1px solid #29304b}
-.track:last-child{border:0}
-.track small{display:block;color:#aab4d2;margin-top:5px}
-.track button{padding:9px 14px}
-input[type=file]{max-width:100%;margin:15px 0}
+padding:20px;border-radius:18px;margin:20px 0}
+input{width:100%;padding:13px;margin:8px 0;
+border-radius:10px;border:1px solid #394364;
+background:#090e20;color:white}
+button{border:0;border-radius:25px;padding:12px 17px;
+background:linear-gradient(100deg,#a13cff,#398bff);
+color:white;font-weight:bold;cursor:pointer;margin:5px 3px}
+button:disabled{opacity:.45}
+.secondary{background:#293253}
+#status{padding:12px;border-radius:10px;background:#0a1023;
+color:#cbb7ff;overflow-wrap:anywhere}
+#roomCode{font-size:28px;letter-spacing:5px;color:#b99aff}
+#songTitle{overflow-wrap:anywhere}
+audio{width:100%;margin-top:15px}
+small{color:#aab4d2}
 footer{text-align:center;color:#9ba7ca;padding:25px}
 </style>
 </head>
@@ -36,80 +39,396 @@ footer{text-align:center;color:#9ba7ca;padding:25px}
   <div class="logo">♫ Synchronize</div>
   <span>Music • Together</span>
 </header>
+
 <main>
   <section class="hero">
     <p>YOUR MUSIC. IN SYNC.</p>
     <h1>Synchronize<br>Your Sound.</h1>
-    <p>Play your music, build your library and share the rhythm.</p>
-    <button onclick="document.querySelector('#files').click()">
-      + Add Your Music
-    </button>
+    <p>One host. One song. One shared moment.</p>
   </section>
 
   <section class="panel">
-    <h2>Your Music Library 🎧</h2>
-    <p>Choose audio files stored on your phone to get started.</p>
-    <input id="files" type="file" accept="audio/*" multiple>
-    <input id="search" type="search" placeholder="Search your songs...">
-    <div id="tracks"><p>Your songs will appear here.</p></div>
+    <h2>1. Connect to a room 🌐</h2>
+    <label for="roomInput">Room code</label>
+    <input id="roomInput" maxlength="8" placeholder="Enter room code">
+    <button id="createBtn">Create room (Host A)</button>
+    <button id="joinBtn" class="secondary">Join room (Phone B)</button>
+    <p>Your room code:</p>
+    <div id="roomCode">------</div>
+    <button id="copyBtn" class="secondary">Copy room code</button>
   </section>
 
   <section class="panel">
-    <h2>Listen Together 🌐</h2>
-    <p>Shared listening is the next step. We'll add rooms, invite links
-    and synchronized play/pause controls.</p>
-    <button onclick="alert('Listening rooms will be added in the next version!')">
-      Create Listening Room
-    </button>
+    <h2>2. Shared song 🎵</h2>
+    <p>Host A enters a direct audio URL that both phones can access.</p>
+    <label for="songUrl">Audio URL (MP3, WAV, or supported audio)</label>
+    <input id="songUrl" type="url" placeholder="https://example.com/song.mp3">
+    <button id="loadBtn">Load song on both phones</button>
+    <p id="songTitle">No song loaded</p>
+    <audio id="player" controls preload="auto"></audio>
+    <div>
+      <button id="playBtn" disabled>▶ Play together</button>
+      <button id="pauseBtn" disabled class="secondary">Ⅱ Pause</button>
+      <button id="backBtn" disabled class="secondary">↶ 10 sec</button>
+      <button id="forwardBtn" disabled class="secondary">10 sec ↷</button>
+    </div>
+    <small>Use the buttons above for shared controls. The host controls playback.</small>
   </section>
-  <audio id="player" controls style="width:100%;margin:15px 0"></audio>
+
+  <section class="panel">
+    <h2>Connection status</h2>
+    <p id="status">Not connected. Set up Firebase first.</p>
+    <p id="role">Role: none</p>
+  </section>
 </main>
+
 <footer>Synchronize Music · Feel the rhythm. Live in sync.</footer>
 
+<!-- Firebase web SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
 <script>
-const files=document.getElementById('files');
-const tracks=document.getElementById('tracks');
-const search=document.getElementById('search');
-const player=document.getElementById('player');
-let songs=[];
+// STEP 1: Replace these placeholder values with your Firebase
+// project's real Web App configuration.
+const firebaseConfig = {
+  apiKey: "PASTE_YOUR_API_KEY",
+  authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://PASTE_YOUR_DATABASE_URL",
+  projectId: "PASTE_YOUR_PROJECT_ID",
+  storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
+  messagingSenderId: "PASTE_YOUR_SENDER_ID",
+  appId: "PASTE_YOUR_APP_ID"
+};
 
-files.addEventListener('change',()=>{
-  songs.push(...Array.from(files.files).map(file=>({
-    name:file.name.replace(/\.[^.]+$/,''),
-    file
-  })));
-  render();
-  files.value='';
-});
+const $ = id => document.getElementById(id);
+const player = $("player");
 
-function render(){
-  const q=search.value.toLowerCase();
-  const filtered=songs.filter(s=>s.name.toLowerCase().includes(q));
-  tracks.replaceChildren();
-  if(!filtered.length){
-    tracks.textContent=songs.length?'No matching songs yet.':'Choose audio files to add music.';
-    return;
+let db = null;
+let roomRef = null;
+let roomCode = "";
+let role = "";
+let roomListener = null;
+let serverOffset = 0;
+let lastCommand = "";
+let syncTimer = null;
+let scheduleTimer = null;
+let applyingRemote = false;
+
+function status(message) {
+  $("status").textContent = message;
+}
+
+function serverNow() {
+  return Date.now() + serverOffset;
+}
+
+function setControls(enabled) {
+  ["loadBtn","playBtn","pauseBtn","backBtn","forwardBtn"]
+    .forEach(id => $(id).disabled = !enabled);
+}
+
+function initFirebase() {
+  try {
+    if (firebaseConfig.apiKey.startsWith("PASTE_") ||
+        firebaseConfig.projectId.startsWith("PASTE_") ||
+        firebaseConfig.databaseURL.includes("PASTE_")) {
+      status("Setup required: add your Firebase web configuration.");
+      return false;
+    }
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+
+    db.ref(".info/serverTimeOffset").on("value", snap => {
+      serverOffset = snap.val() || 0;
+    });
+
+    status("Firebase initialized. Create a room or join one.");
+    return true;
+  } catch (e) {
+    status("Firebase error: " + e.message);
+    return false;
   }
-  filtered.forEach(song=>{
-    const row=document.createElement('div');
-    row.className='track';
-    const info=document.createElement('div');
-    const name=document.createElement('strong');
-    name.textContent=song.name;
-    const detail=document.createElement('small');
-    detail.textContent='Your audio file';
-    info.append(name,detail);
-    const btn=document.createElement('button');
-    btn.textContent='▶ Play';
-    btn.onclick=()=>{
-      player.src=URL.createObjectURL(song.file);
-      player.play();
-    };
-    row.append(info,btn);
-    tracks.append(row);
+}
+
+function randomCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let result = "";
+  for (let i = 0; i < 6; i++)
+    result += chars[Math.floor(Math.random() * chars.length)];
+  return result;
+}
+
+function stopListening() {
+  if (roomRef && roomListener) roomRef.off("value", roomListener);
+  roomListener = null;
+  clearTimeout(scheduleTimer);
+  clearInterval(syncTimer);
+}
+
+async function createRoom() {
+  if (!db) return status("Configure Firebase before creating a room.");
+  stopListening();
+  role = "host";
+  $("role").textContent = "Role: Host A";
+  status("Creating room...");
+
+  try {
+    let created = false;
+    for (let i = 0; i < 5; i++) {
+      roomCode = randomCode();
+      const ref = db.ref("rooms/" + roomCode);
+      const result = await ref.transaction(current =>
+        current === null ? {
+          hostPresent: true,
+          state: {
+            songUrl: "",
+            playing: false,
+            position: 0,
+            startAt: 0,
+            updatedAt: firebase.database.ServerValue.TIMESTAMP
+          }
+        } : undefined, undefined, false);
+
+      if (result.committed) {
+        created = true;
+        break;
+      }
+    }
+
+    if (!created) throw new Error("Could not create a unique room.");
+
+    $("roomCode").textContent = roomCode;
+    $("roomInput").value = roomCode;
+    roomRef = db.ref("rooms/" + roomCode);
+    listenToRoom();
+    status("Room created. Share the code with Phone B.");
+  } catch (e) {
+    status("Could not create room: " + e.message);
+  }
+}
+
+async function joinRoom() {
+  if (!db) return status("Configure Firebase before joining a room.");
+  const code = $("roomInput").value.trim().toUpperCase();
+  if (!/^[A-HJ-NP-Z2-9]{6}$/.test(code))
+    return status("Enter a valid six-character room code.");
+
+  stopListening();
+  roomCode = code;
+  role = "listener";
+  $("role").textContent = "Role: Listener B";
+  roomRef = db.ref("rooms/" + roomCode);
+
+  try {
+    const snap = await roomRef.get();
+    if (!snap.exists()) {
+      roomRef = null;
+      return status("Room not found. Check the code.");
+    }
+    $("roomCode").textContent = roomCode;
+    listenToRoom();
+    status("Joined room. Tap the page once if your phone blocks audio.");
+  } catch (e) {
+    status("Could not join: " + e.message);
+  }
+}
+
+function listenToRoom() {
+  roomListener = roomRef.child("state").on("value", snap => {
+    const state = snap.val();
+    if (!state) return;
+
+    if (state.songUrl && player.src !== new URL(state.songUrl, location.href).href) {
+      player.src = state.songUrl;
+      $("songTitle").textContent = "Shared song loaded";
+      setControls(true);
+      player.load();
+    } else if (state.songUrl) {
+      setControls(true);
+    }
+
+    if (!state.songUrl) {
+      $("songTitle").textContent = "Host has not selected a song";
+      return;
+    }
+
+    if (state.commandId && state.commandId === lastCommand) return;
+    lastCommand = state.commandId || "";
+
+    clearTimeout(scheduleTimer);
+    const target = state.playing
+      ? state.position + Math.max(0, serverNow() - state.startAt) / 1000
+      : state.position;
+
+    if (Number.isFinite(player.duration) && player.duration > 0) {
+      applyingRemote = true;
+      player.currentTime = Math.max(0, Math.min(target, player.duration));
+      applyingRemote = false;
+    } else {
+      player.addEventListener("loadedmetadata", function once() {
+        player.removeEventListener("loadedmetadata", once);
+        applyingRemote = true;
+        player.currentTime = Math.max(0, Math.min(target, player.duration || target));
+        applyingRemote = false;
+        if (state.playing) schedulePlay(state);
+      });
+    }
+
+    if (state.playing) {
+      schedulePlay(state);
+    } else {
+      player.pause();
+    }
+  });
+
+  clearInterval(syncTimer);
+  syncTimer = setInterval(() => {
+    if (!roomRef || !player.src || !Number.isFinite(player.duration) ||
+        player.duration <= 0 || player.paused) return;
+
+    if (role === "listener") {
+      roomRef.child("state").get().then(snap => {
+        const s = snap.val();
+        if (!s || !s.playing || !s.startAt) return;
+        const expected = s.position + Math.max(0, serverNow() - s.startAt) / 1000;
+        if (Math.abs(player.currentTime - expected) > 0.45) {
+          applyingRemote = true;
+          player.currentTime = Math.min(expected, player.duration);
+          applyingRemote = false;
+        }
+      }).catch(() => {});
+    }
+  }, 1500);
+}
+
+function schedulePlay(state) {
+  clearTimeout(scheduleTimer);
+  const delay = state.startAt - serverNow();
+  if (delay > 0) {
+    player.pause();
+    scheduleTimer = setTimeout(() => beginPlayback(state), delay);
+  } else {
+    beginPlayback(state);
+  }
+}
+
+async function beginPlayback(state) {
+  if (state.startAt) {
+    const position = state.position +
+      Math.max(0, serverNow() - state.startAt) / 1000;
+    if (Number.isFinite(player.duration) && player.duration > 0) {
+      applyingRemote = true;
+      player.currentTime = Math.min(position, player.duration);
+      applyingRemote = false;
+    }
+  }
+  try {
+    await player.play();
+    status("Playback running. Sync corrections are active.");
+  } catch (e) {
+    status("Tap Play on this phone to allow audio, then rejoin or ask the host to play again.");
+  }
+}
+
+async function publishState(playing, position, startAt) {
+  if (!roomRef || role !== "host") return;
+  const snap = await roomRef.child("state").get();
+  const old = snap.val() || {};
+  await roomRef.child("state").set({
+    songUrl: old.songUrl || "",
+    playing,
+    position: Math.max(0, position || 0),
+    startAt: playing ? startAt : 0,
+    commandId: Date.now() + "-" + Math.random().toString(36).slice(2),
+    updatedAt: firebase.database.ServerValue.TIMESTAMP
   });
 }
-search.addEventListener('input',render);
+
+async function loadSong() {
+  if (role !== "host" || !roomRef)
+    return status("Only Host A can choose the shared song.");
+  const url = $("songUrl").value.trim();
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") throw new Error("Use an HTTPS audio URL.");
+    await roomRef.child("state").update({
+      songUrl: url,
+      playing: false,
+      position: 0,
+      startAt: 0,
+      commandId: String(Date.now()),
+      updatedAt: firebase.database.ServerValue.TIMESTAMP
+    });
+    status("Song sent to the room. Wait until both phones have loaded it.");
+  } catch (e) {
+    status("Please enter a valid HTTPS audio URL.");
+  }
+}
+
+async function playTogether() {
+  if (role !== "host" || !roomRef)
+    return status("Only Host A controls shared playback.");
+  if (!player.src) return status("Load a shared song first.");
+
+  try {
+    await player.play();
+    player.pause();
+    player.currentTime = player.currentTime || 0;
+  } catch (e) {
+    return status("Tap Play once to allow audio on the host phone.");
+  }
+
+  status("Scheduling playback for both phones...");
+  await publishState(true, player.currentTime, serverNow() + 4000);
+}
+
+async function pauseTogether() {
+  if (role !== "host" || !roomRef)
+    return status("Only Host A controls shared playback.");
+  await publishState(false, player.currentTime, 0);
+}
+
+async function seekTogether(delta) {
+  if (role !== "host" || !roomRef)
+    return status("Only Host A controls shared playback.");
+  const pos = Math.max(0, player.currentTime + delta);
+  const snap = await roomRef.child("state").get();
+  const s = snap.val();
+  if (!s) return;
+  if (s.playing) {
+    await publishState(true, pos, serverNow() + 2500);
+  } else {
+    await publishState(false, pos, 0);
+  }
+}
+
+$("createBtn").onclick = createRoom;
+$("joinBtn").onclick = joinRoom;
+$("loadBtn").onclick = loadSong;
+$("playBtn").onclick = playTogether;
+$("pauseBtn").onclick = pauseTogether;
+$("backBtn").onclick = () => seekTogether(-10);
+$("forwardBtn").onclick = () => seekTogether(10);
+$("copyBtn").onclick = async () => {
+  if (!roomCode) return status("Create or join a room first.");
+  try {
+    await navigator.clipboard.writeText(roomCode);
+    status("Room code copied.");
+  } catch (e) {
+    status("Your room code is " + roomCode + ". Copy it manually.");
+  }
+};
+
+player.addEventListener("play", () => {
+  if (role === "listener" && !applyingRemote) player.pause();
+});
+player.addEventListener("ended", () => {
+  if (role === "host" && roomRef) pauseTogether();
+});
+
+initFirebase();
 </script>
 </body>
 </html>
