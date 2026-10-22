@@ -1,0 +1,115 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synchronize Music</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#080b18;color:#fff;font-family:Arial,sans-serif}
+header{padding:20px 6%;display:flex;justify-content:space-between;
+align-items:center;border-bottom:1px solid #242944}
+.logo{font-size:23px;font-weight:bold;color:#b38cff}
+main{max-width:900px;margin:45px auto;padding:20px}
+.hero{text-align:center;padding:30px 0}
+h1{font-size:clamp(36px,8vw,60px);margin:10px 0}
+p{color:#b8c1df;line-height:1.6}
+button,.upload{border:0;border-radius:25px;padding:12px 18px;
+background:linear-gradient(100deg,#a13cff,#398bff);color:white;
+font-weight:bold;cursor:pointer;display:inline-block}
+.panel{background:#11172b;border:1px solid #293253;
+padding:22px;border-radius:18px;margin:20px 0}
+input[type=search]{width:100%;padding:14px;border-radius:12px;
+border:1px solid #394364;background:#090e20;color:white;margin:12px 0}
+.track{display:flex;justify-content:space-between;align-items:center;
+gap:12px;padding:14px 0;border-bottom:1px solid #29304b}
+.track:last-child{border:0}
+.track small{display:block;color:#aab4d2;margin-top:5px}
+.track button{padding:9px 14px}
+input[type=file]{max-width:100%;margin:15px 0}
+footer{text-align:center;color:#9ba7ca;padding:25px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">♫ Synchronize</div>
+  <span>Music • Together</span>
+</header>
+<main>
+  <section class="hero">
+    <p>YOUR MUSIC. IN SYNC.</p>
+    <h1>Synchronize<br>Your Sound.</h1>
+    <p>Play your music, build your library and share the rhythm.</p>
+    <button onclick="document.querySelector('#files').click()">
+      + Add Your Music
+    </button>
+  </section>
+
+  <section class="panel">
+    <h2>Your Music Library 🎧</h2>
+    <p>Choose audio files stored on your phone to get started.</p>
+    <input id="files" type="file" accept="audio/*" multiple>
+    <input id="search" type="search" placeholder="Search your songs...">
+    <div id="tracks"><p>Your songs will appear here.</p></div>
+  </section>
+
+  <section class="panel">
+    <h2>Listen Together 🌐</h2>
+    <p>Shared listening is the next step. We'll add rooms, invite links
+    and synchronized play/pause controls.</p>
+    <button onclick="alert('Listening rooms will be added in the next version!')">
+      Create Listening Room
+    </button>
+  </section>
+  <audio id="player" controls style="width:100%;margin:15px 0"></audio>
+</main>
+<footer>Synchronize Music · Feel the rhythm. Live in sync.</footer>
+
+<script>
+const files=document.getElementById('files');
+const tracks=document.getElementById('tracks');
+const search=document.getElementById('search');
+const player=document.getElementById('player');
+let songs=[];
+
+files.addEventListener('change',()=>{
+  songs.push(...Array.from(files.files).map(file=>({
+    name:file.name.replace(/\.[^.]+$/,''),
+    file
+  })));
+  render();
+  files.value='';
+});
+
+function render(){
+  const q=search.value.toLowerCase();
+  const filtered=songs.filter(s=>s.name.toLowerCase().includes(q));
+  tracks.replaceChildren();
+  if(!filtered.length){
+    tracks.textContent=songs.length?'No matching songs yet.':'Choose audio files to add music.';
+    return;
+  }
+  filtered.forEach(song=>{
+    const row=document.createElement('div');
+    row.className='track';
+    const info=document.createElement('div');
+    const name=document.createElement('strong');
+    name.textContent=song.name;
+    const detail=document.createElement('small');
+    detail.textContent='Your audio file';
+    info.append(name,detail);
+    const btn=document.createElement('button');
+    btn.textContent='▶ Play';
+    btn.onclick=()=>{
+      player.src=URL.createObjectURL(song.file);
+      player.play();
+    };
+    row.append(info,btn);
+    tracks.append(row);
+  });
+}
+search.addEventListener('input',render);
+</script>
+</body>
+</html>
